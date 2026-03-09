@@ -110,8 +110,25 @@ export async function POST(req: Request) {
 
     // 3. Extract values — supports both `properties.Field` and root-level `Field`
     // Helper to check props first, then fall back to root body
-    const get = (key: string) =>
-      extractProperty(props[key]) || body[key] || props[key?.toLowerCase()] || body[key?.toLowerCase()] || "";
+    // Helper: check props then root body, always through extractProperty to handle objects
+    const get = (key: string): string => {
+      const sources = [
+        props[key],
+        body[key],
+        props[key?.toLowerCase()],
+        body[key?.toLowerCase()],
+      ];
+      for (const src of sources) {
+        const val = extractProperty(src);
+        if (val !== undefined && val !== null && String(val).trim() !== "") {
+          return String(val).trim();
+        }
+        // Also handle plain string/number directly
+        if (typeof src === "string" && src.trim()) return src.trim();
+        if (typeof src === "number") return String(src);
+      }
+      return "";
+    };
 
     const amount = extractProperty(props.Amount) ?? props.amount ?? body.Amount ?? body.amount;
     const description = get("Keterangan") || get("Description") || get("description") || "";
