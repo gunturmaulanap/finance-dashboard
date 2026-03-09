@@ -8,11 +8,13 @@ export default async function TransactionsPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>
 }) {
-  const params = await searchParams
-  const supabase = await createClient()
+  const [params, supabase] = await Promise.all([
+    searchParams,
+    createClient(),
+  ])
 
-  // Build query with optional date range filters
-  let query = supabase
+  // Build transactions query
+  let txQuery = supabase
     .from("transactions")
     .select(`
       *,
@@ -22,28 +24,28 @@ export default async function TransactionsPage({
     .order("transaction_date", { ascending: false })
 
   if (params.from) {
-    query = query.gte("transaction_date", params.from)
+    txQuery = txQuery.gte("transaction_date", params.from)
   }
   if (params.to) {
     const toDate = new Date(params.to)
     toDate.setDate(toDate.getDate() + 1)
-    query = query.lt("transaction_date", toDate.toISOString().split("T")[0])
+    txQuery = txQuery.lt("transaction_date", toDate.toISOString().split("T")[0])
   }
 
-  const { data: transactions } = await query
+  // Run ALL queries in parallel instead of sequentially
+  const [
+    { data: transactions },
+    { data: categories },
+    { data: payments },
+    { data: { user } },
+  ] = await Promise.all([
+    txQuery,
+    supabase.from("master_categories").select("id, name, type").order("name"),
+    supabase.from("master_payment_methods").select("id, name").order("name"),
+    supabase.auth.getUser(),
+  ])
 
-  const { data: categories } = await supabase
-    .from("master_categories")
-    .select("id, name, type")
-    .order("name")
-
-  const { data: payments } = await supabase
-    .from("master_payment_methods")
-    .select("id, name")
-    .order("name")
-
-  // Fetch current user role
-  const { data: { user } } = await supabase.auth.getUser()
+  // Get user role (needs user.id from above)
   let userRole = "viewer"
   if (user) {
     const { data: roleData } = await supabase
