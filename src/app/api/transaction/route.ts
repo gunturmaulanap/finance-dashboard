@@ -15,29 +15,55 @@ function getSupabase() {
 function extractText(field: any): string {
   // rich_text array: [{ plain_text: "..." }]
   if (Array.isArray(field)) {
-    return field.map((t: any) => t.plain_text || "").join("").trim();
+    // Notion rich_text format: [{ plain_text: "..." }]
+    if (field.length > 0 && typeof field[0] === "object" && field[0].plain_text !== undefined) {
+      return field.map((t: any) => t.plain_text || "").join("").trim();
+    }
+    // iPhone Shortcuts native array format: ["Cash"] or [55000]
+    return field.map((t: any) => String(t)).join("").trim();
   }
   // Single string
   if (typeof field === "string") return field.trim();
+  // Number
+  if (typeof field === "number") return String(field);
   return "";
 }
 
 /**
- * Helper: Extract value from various Notion property formats
- * Supports: select, rich_text, title, number, date
+ * Helper: Extract value from various property formats
+ * Supports: Notion (select, rich_text, title, number, date, formula)
+ *           iPhone Shortcuts native arrays ["value"]
+ *           Plain strings/numbers
  */
 function extractProperty(prop: any): any {
-  if (!prop) return undefined;
+  if (prop === undefined || prop === null) return undefined;
 
+  // Plain string or number — direct value
+  if (typeof prop === "string") return prop.trim() || undefined;
+  if (typeof prop === "number") return prop;
+
+  // iPhone Shortcuts native: array of plain values ["Cash"] or [55000]
+  if (Array.isArray(prop)) {
+    if (prop.length === 0) return undefined;
+    const first = prop[0];
+    // If array contains Notion rich_text objects
+    if (typeof first === "object" && first.plain_text !== undefined) {
+      return extractText(prop) || undefined;
+    }
+    // Plain value array
+    return typeof first === "number" ? first : String(first).trim() || undefined;
+  }
+
+  // Notion-style object with `type`
   switch (prop.type) {
     case "number":
       return prop.number;
     case "select":
       return prop.select?.name;
     case "rich_text":
-      return extractText(prop.rich_text);
+      return extractText(prop.rich_text) || undefined;
     case "title":
-      return extractText(prop.title);
+      return extractText(prop.title) || undefined;
     case "date":
       return prop.date?.start;
     case "formula":
@@ -46,8 +72,8 @@ function extractProperty(prop: any): any {
       // Fallback: try common fields
       if (prop.number !== undefined) return prop.number;
       if (prop.select?.name) return prop.select.name;
-      if (prop.rich_text) return extractText(prop.rich_text);
-      if (prop.title) return extractText(prop.title);
+      if (prop.rich_text) return extractText(prop.rich_text) || undefined;
+      if (prop.title) return extractText(prop.title) || undefined;
       return undefined;
   }
 }
