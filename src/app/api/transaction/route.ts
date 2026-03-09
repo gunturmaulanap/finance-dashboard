@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client with Service Role to bypass RLS for a backend web hook.
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy init — avoid running at build time when env vars aren't available
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 /**
  * Helper: Extract plain text from Notion-style rich_text array or title array
@@ -52,6 +54,8 @@ function extractProperty(prop: any): any {
 
 export async function POST(req: Request) {
   try {
+    const supabase = getSupabase();
+
     // 1. Verify Authorization Header
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
