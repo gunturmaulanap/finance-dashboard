@@ -351,12 +351,23 @@ export function TransactionsTable({
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel disabled={deletingId === tx.id}>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-destructive text-white hover:bg-destructive/90"
-                              onClick={() => handleDelete(tx.id)}
+                              disabled={deletingId === tx.id}
+                              onClick={async (e) => {
+                                e.preventDefault()
+                                await handleDelete(tx.id)
+                              }}
                             >
-                              Delete
+                              {deletingId === tx.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                "Delete"
+                              )}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
