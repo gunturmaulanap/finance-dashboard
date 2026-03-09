@@ -72,6 +72,7 @@ export async function POST(req: Request) {
 
     // 2. Parse JSON Body (supports Notion-style and flat-style)
     const body = await req.json();
+    console.log("[API] Raw body received:", JSON.stringify(body, null, 2));
     const props = body?.properties || body;
 
     if (!props) {
@@ -81,34 +82,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Extract values — auto-detect Notion property types
-    const amount = extractProperty(props.Amount) ?? props.amount;
-    const description =
-      extractProperty(props.Keterangan) ||
-      extractProperty(props.Description) ||
-      props.description ||
-      "";
-    const rawType =
-      extractProperty(props["Jenis Transaksi"]) ||
-      extractProperty(props.transaction_type) ||
-      props.transaction_type ||
-      "";
+    // 3. Extract values — supports both `properties.Field` and root-level `Field`
+    // Helper to check props first, then fall back to root body
+    const get = (key: string) =>
+      extractProperty(props[key]) || body[key] || props[key?.toLowerCase()] || body[key?.toLowerCase()] || "";
+
+    const amount = extractProperty(props.Amount) ?? props.amount ?? body.Amount ?? body.amount;
+    const description = get("Keterangan") || get("Description") || get("description") || "";
+    const rawType = get("Jenis Transaksi") || get("jenis_transaksi") || get("transaction_type") || "";
     const transaction_date =
       extractProperty(props.Date) ||
+      body.Date ||
       props.transaction_date ||
+      body.transaction_date ||
       new Date().toISOString();
-    const categoryName =
-      extractProperty(props.Category) || props.category || "";
-    const paymentName =
-      extractProperty(props.Payment) || props.payment || "";
+    const categoryName = get("Category") || get("category") || "";
+    const paymentName = get("Payment") || get("payment") || "";
     const createdByName =
-      extractProperty(props.User) ||
-      extractProperty(props.Created_by) ||
-      body.User ||
-      body.user ||
-      props.user ||
-      props.created_by_name ||
-      "Unknown";
+      get("User") || get("Created_by") || get("created_by_name") || "Unknown";
 
     // Normalize transaction type
     const transaction_type = rawType.toLowerCase().includes("pemasukan")
