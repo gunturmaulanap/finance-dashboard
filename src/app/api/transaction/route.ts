@@ -16,10 +16,11 @@ function extractText(field: any): string {
   // rich_text array: [{ plain_text: "..." }]
   if (Array.isArray(field)) {
     // Notion rich_text format: [{ plain_text: "..." }]
-    if (field.length > 0 && typeof field[0] === "object" && field[0].plain_text !== undefined) {
-      return field.map((t: any) => t.plain_text || "").join("").trim();
+    // iPhone Shortcuts format: [{ type: "text", text: { content: "..." } }]
+    if (field.length > 0 && typeof field[0] === "object" && (field[0].plain_text !== undefined || field[0].text?.content !== undefined)) {
+      return field.map((t: any) => t.plain_text || t.text?.content || "").join("").trim();
     }
-    // iPhone Shortcuts native array format: ["Cash"] or [55000]
+    // Plain array: ["Cash"] or [55000]
     return field.map((t: any) => String(t)).join("").trim();
   }
   // Single string
