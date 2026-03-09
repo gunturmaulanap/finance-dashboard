@@ -74,7 +74,19 @@ function extractProperty(prop: any): any {
       if (prop.select?.name) return prop.select.name;
       if (prop.rich_text) return extractText(prop.rich_text) || undefined;
       if (prop.title) return extractText(prop.title) || undefined;
-      return undefined;
+  // Unknown object — try to extract value from any common key
+  const stringKeys = ["string", "value", "text", "name", "plain_text", "WFSerializationType"];
+  for (const k of ["string", "value", "text", "name", "plain_text"]) {
+    if (prop[k] !== undefined) {
+      if (typeof prop[k] === "string") return prop[k].trim() || undefined;
+      if (typeof prop[k] === "number") return prop[k];
+      // Recurse one level
+      const nested = extractProperty(prop[k]);
+      if (nested !== undefined) return nested;
+    }
+  }
+  void stringKeys;
+  return undefined;
   }
 }
 
@@ -169,7 +181,17 @@ export async function POST(req: Request) {
 
     if (!["pemasukan", "pengeluaran"].includes(transaction_type)) {
       return NextResponse.json(
-        { error: `Invalid transaction_type: "${rawType}". Must be "Pemasukan" or "Pengeluaran".` },
+        {
+          error: `Invalid transaction_type: "${rawType}". Must be "Pemasukan" or "Pengeluaran".`,
+          debug: {
+            rawType,
+            transaction_type,
+            body_snapshot: {
+              "Jenis Transaksi": body?.properties?.["Jenis Transaksi"] ?? body?.["Jenis Transaksi"],
+              "jenis_transaksi": body?.properties?.["jenis_transaksi"] ?? body?.["jenis_transaksi"],
+            },
+          },
+        },
         { status: 400 }
       );
     }
