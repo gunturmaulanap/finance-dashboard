@@ -10,6 +10,7 @@ import {
   WalletCards,
   LogOut,
   WalletMinimal,
+  Landmark,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -31,6 +32,7 @@ import {
 const mainNav = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Transactions", href: "/transactions", icon: ReceiptText },
+  { title: "Assets", href: "/assets", icon: Landmark },
 ]
 
 const masterNav = [
